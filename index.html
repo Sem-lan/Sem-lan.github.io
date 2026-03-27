@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lockout Bingo</title>
+  <style>
+    :root {
+      --p1: #e74c3c;
+      --p2: #3498db;
+      --p3: #2ecc71;
+      --p4: #f39c12;
+      --p5: #9b59b6;
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --surface2: #0f3460;
+      --text: #eaeaea;
+      --muted: #888;
+      --border: #2a2a4a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #e74c3c, #9b59b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 28px; letter-spacing: 1px; }
+
+    /* ── Setup Panel ── */
+    #setup {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px 36px;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .form-group input[type=range] {
+      width: 100%;
+      accent-color: #9b59b6;
+      height: 6px;
+      cursor: pointer;
+    }
+
+    .range-value {
+      display: inline-block;
+      background: var(--surface2);
+      border-radius: 6px;
+      padding: 2px 10px;
+      font-size: 0.95rem;
+      min-width: 36px;
+      text-align: center;
+      margin-left: 8px;
+    }
+
+    .players-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .player-slot {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .player-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    .player-slot label {
+      display: flex;
+      align-items: center;
+      font-size: 0.75rem;
+      text-transform: none;
+      letter-spacing: 0;
+      color: var(--text);
+      margin-bottom: 0;
+    }
+
+    .player-slot input[type=text] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .player-slot input[type=text]:focus { border-color: #9b59b6; }
+    .player-slot input[type=text]:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .player-slot input[type=checkbox] {
+      accent-color: #9b59b6;
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+      margin-right: 4px;
+    }
+
+    #start-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #e74c3c, #9b59b6);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      margin-top: 8px;
+    }
+    #start-btn:hover { opacity: 0.9; transform: scale(1.01); }
+
+    /* ── Game Area ── */
+    #game { display: none; width: 100%; max-width: 1100px; }
+
+    /* Scoreboard */
+    #scoreboard {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+
+    .score-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 18px;
+      min-width: 110px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+      position: relative;
+    }
+    .score-card.active {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+    }
+    .score-card .s-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .score-card .s-score {
+      font-size: 1.8rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .score-card .s-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .score-card .active-indicator {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg);
+      padding: 1px 8px;
+      border-radius: 8px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+
+    /* Controls */
+    .game-controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .ctrl-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 18px;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .ctrl-btn:hover { background: var(--surface2); }
+
+    /* Board */
+    #board-wrapper {
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    #board {
+      display: grid;
+      gap: 5px;
+      width: max-content;
+      margin: 0 auto;
+    }
+
+    .cell {
+      width: 90px;
+      height: 90px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 0.7rem;
+      padding: 6px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.2s, background 0.25s;
+      position: relative;
+      overflow: hidden;
+      line-height: 1.3;
+      user-select: none;
+    }
+
+    .cell:hover:not(.claimed) {
+      transform: scale(1.04);
+      border-color: var(--muted);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    .cell.claimed {
+      cursor: default;
+    }
+
+    .cell .claim-badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* Win banner */
+    #win-banner {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    #win-banner.show { display: flex; }
+    .win-box {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 48px 60px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      border: 2px solid var(--border);
+    }
+    .win-box h2 {
+      font-size: 2.5rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+    .win-box p { color: var(--muted); margin-bottom: 28px; }
+    .win-box button {
+      background: linear-gradient(135deg, #e74c3c, #9b59b6);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      padding: 12px 32px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Lockout Bingo</h1>
+<p class="subtitle">Claim squares — last one claimed wins the square</p>
+
+<!-- Setup -->
+<section id="setup">
+  <div class="form-group">
+    <label>Board Size: <span id="size-label" class="range-value">5×5</span></label>
+    <input type="range" id="size-range" min="2" max="10" value="5" />
+  </div>
+
+  <div class="form-group">
+    <label>Number of Players: <span id="player-count-label" class="range-value">2</span></label>
+    <input type="range" id="player-range" min="1" max="5" value="2" />
+  </div>
+
+  <div class="form-group">
+    <label>Player Names</label>
+    <div class="players-grid" id="players-grid"></div>
+  </div>
+
+  <button id="start-btn">Start Game</button>
+</section>
+
+<!-- Game -->
+<div id="game">
+  <div id="scoreboard"></div>
+  <div class="game-controls">
+    <button class="ctrl-btn" id="reset-btn">↩ Reset Board</button>
+    <button class="ctrl-btn" id="new-game-btn">⚙ New Setup</button>
+  </div>
+  <div id="board-wrapper">
+    <div id="board"></div>
+  </div>
+</div>
+
+<!-- Win Banner -->
+<div id="win-banner">
+  <div class="win-box">
+    <h2 id="win-title">Player 1 Wins!</h2>
+    <p id="win-sub">Most squares claimed</p>
+    <button onclick="closeWin()">Continue Playing</button>
+  </div>
+</div>
+
+<script>
+const PLAYER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6'];
+const PLAYER_NAMES_DEFAULT = ['Player 1','Player 2','Player 3','Player 4','Player 5'];
+
+let challenges = [];
+let state = {
+  size: 5,
+  numPlayers: 2,
+  players: [],
+  activePlayer: 0,
+  board: [],      // array of {challenge, owner: null|index}
+  scores: [],
+};
+
+// ── Fetch challenges ──────────────────────────────────────────
+async function loadChallenges() {
+  try {
+    const res = await fetch('challanges.json');
+    challenges = await res.json();
+  } catch(e) {
+    // fallback sample if file not found
+    challenges = [{name:'Challenge 1'},{name:'Challenge 2'},{name:'Challenge 3'}];
+  }
+}
+
+// ── Setup UI ──────────────────────────────────────────────────
+const sizeRange = document.getElementById('size-range');
+const sizeLabel = document.getElementById('size-label');
+const playerRange = document.getElementById('player-range');
+const playerCountLabel = document.getElementById('player-count-label');
+const playersGrid = document.getElementById('players-grid');
+
+function buildPlayersUI(n) {
+  playersGrid.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'player-slot';
+    const enabled = i < n;
+    slot.innerHTML = `
+      <label>
+        <span class="player-dot" style="background:${PLAYER_COLORS[i]}"></span>P${i+1}
+      </label>
+      <input type="text" id="pname-${i}" value="${PLAYER_NAMES_DEFAULT[i]}"
+             placeholder="Name" ${enabled ? '' : 'disabled'} />
+    `;
+    playersGrid.appendChild(slot);
+  }
+}
+
+sizeRange.addEventListener('input', () => {
+  const v = +sizeRange.value;
+  sizeLabel.textContent = `${v}×${v}`;
+});
+
+playerRange.addEventListener('input', () => {
+  const n = +playerRange.value;
+  playerCountLabel.textContent = n;
+  buildPlayersUI(n);
+});
+
+buildPlayersUI(2);
+
+// ── Start Game ────────────────────────────────────────────────
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('reset-btn').addEventListener('click', resetBoard);
+document.getElementById('new-game-btn').addEventListener('click', goSetup);
+
+function startGame() {
+  const size = +sizeRange.value;
+  const numPlayers = +playerRange.value;
+  const needed = size * size;
+
+  if (challenges.length < needed) {
+    alert(`Not enough challenges! Need ${needed}, have ${challenges.length}.`);
+    return;
+  }
+
+  state.size = size;
+  state.numPlayers = numPlayers;
+  state.activePlayer = 0;
+  state.scores = Array(numPlayers).fill(0);
+  state.players = [];
+  for (let i = 0; i < numPlayers; i++) {
+    const nameEl = document.getElementById(`pname-${i}`);
+    state.players.push({
+      name: (nameEl && nameEl.value.trim()) || PLAYER_NAMES_DEFAULT[i],
+      color: PLAYER_COLORS[i],
+    });
+  }
+
+  // Pick random challenges
+  const shuffled = [...challenges].sort(() => Math.random() - 0.5).slice(0, needed);
+  state.board = shuffled.map(c => ({ challenge: c.name, owner: null }));
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+
+  renderScoreboard();
+  renderBoard();
+}
+
+function resetBoard() {
+  const needed = state.size * state.size;
+  const shuffled = [...challenges].sort(() => Math.random() - 0.5).slice(0, needed);
+  state.board = shuffled.map(c => ({ challenge: c.name, owner: null }));
+  state.scores = Array(state.numPlayers).fill(0);
+  state.activePlayer = 0;
+  renderScoreboard();
+  renderBoard();
+}
+
+function goSetup() {
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('setup').style.display = 'block';
+}
+
+// ── Scoreboard ────────────────────────────────────────────────
+function renderScoreboard() {
+  const sb = document.getElementById('scoreboard');
+  sb.innerHTML = '';
+  state.players.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'score-card' + (i === state.activePlayer ? ' active' : '');
+    card.style.borderColor = i === state.activePlayer ? p.color : 'var(--border)';
+    card.style.boxShadow = i === state.activePlayer ? `0 0 18px ${p.color}55` : '';
+    card.dataset.player = i;
+    card.innerHTML = `
+      ${i === state.activePlayer ? `<span class="active-indicator" style="color:${p.color};border-color:${p.color}">▶ Active</span>` : ''}
+      <div class="s-name" style="color:${p.color}">${escHtml(p.name)}</div>
+      <div class="s-score" style="color:${p.color}">${state.scores[i]}</div>
+      <div class="s-label">squares</div>
+    `;
+    card.addEventListener('click', () => setActivePlayer(i));
+    sb.appendChild(card);
+  });
+}
+
+function setActivePlayer(i) {
+  state.activePlayer = i;
+  renderScoreboard();
+}
+
+// ── Board ─────────────────────────────────────────────────────
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.style.gridTemplateColumns = `repeat(${state.size}, 90px)`;
+  board.innerHTML = '';
+
+  state.board.forEach((cell, idx) => {
+    const div = document.createElement('div');
+    div.className = 'cell' + (cell.owner !== null ? ' claimed' : '');
+    div.dataset.index = idx;
+
+    if (cell.owner !== null) {
+      const p = state.players[cell.owner];
+      div.style.background = p.color + '33';
+      div.style.borderColor = p.color;
+      div.innerHTML = `<span class="claim-badge" style="background:${p.color}"></span>${escHtml(cell.challenge)}`;
+    } else {
+      div.textContent = cell.challenge;
+      div.addEventListener('click', claimCell);
+    }
+
+    board.appendChild(div);
+  });
+}
+
+function claimCell(e) {
+  const idx = +e.currentTarget.dataset.index;
+  const cell = state.board[idx];
+  if (cell.owner !== null) return;
+
+  cell.owner = state.activePlayer;
+  state.scores[state.activePlayer]++;
+
+  // Advance to next player automatically
+  state.activePlayer = (state.activePlayer + 1) % state.numPlayers;
+
+  renderScoreboard();
+  renderBoard();
+  checkWin();
+}
+
+function checkWin() {
+  const total = state.size * state.size;
+  const claimed = state.board.filter(c => c.owner !== null).length;
+  if (claimed === total) {
+    // All cells claimed — find winner
+    const maxScore = Math.max(...state.scores);
+    const winners = state.players.filter((_, i) => state.scores[i] === maxScore);
+    const title = winners.length === 1
+      ? `${winners[0].name} Wins!`
+      : `It's a Tie!`;
+    const sub = winners.length === 1
+      ? `${maxScore} of ${total} squares claimed`
+      : `${winners.map(w => w.name).join(' & ')} — ${maxScore} squares each`;
+    document.getElementById('win-title').textContent = title;
+    if (winners.length === 1) {
+      document.getElementById('win-title').style.color = winners[0].color;
+    }
+    document.getElementById('win-sub').textContent = sub;
+    document.getElementById('win-banner').classList.add('show');
+  }
+}
+
+function closeWin() {
+  document.getElementById('win-banner').classList.remove('show');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Init ──────────────────────────────────────────────────────
+loadChallenges();
+</script>
+</body>
+</html>
