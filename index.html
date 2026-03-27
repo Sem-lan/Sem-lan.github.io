@@ -476,6 +476,8 @@ const gun = Gun({
   peers: [
     'https://peer.wallie.io/gun',
     'https://gundb-relay-milsav.onrender.com/gun',
+    'https://gunjs.herokuapp.com/gun',
+    'https://gun-eu.herokuapp.com/gun',
   ]
 });
 const ROOM_NS = 'lockout-bingo-v3';
@@ -518,32 +520,44 @@ function unsubscribeRoom() {
   _activeRoomRef = null;
 }
 
+function applyClaim(idx, val) {
+  if (isNaN(idx) || idx < 0 || idx >= state.board.length) return;
+  const current = state.board[idx].owner;
+  if (val === null) {
+    state.board[idx].owner = null;
+  } else if (typeof val === 'number') {
+    if (current !== null && current !== val) return;
+    state.board[idx].owner = val;
+  }
+}
+
 function subscribeRoom(roomId) {
   if (gunSubscribed) return;
   gunSubscribed  = true;
   _activeRoomRef = roomRef(roomId);
 
-  // Live claim updates
-  _activeRoomRef.get('claims').map().on((val, key) => {
+  const claimStream = _activeRoomRef.get('claims');
+
+  // Live + existing claim updates
+  claimStream.map().on((val, key) => {
     const idx = parseInt(key);
-    if (isNaN(idx) || !state.board[idx]) return;
+    if (isNaN(idx)) return;
 
-    const current = state.board[idx].owner;
-    if (val === null) {
-      if (current === null) return;
-      state.board[idx].owner = null;
-    } else if (typeof val === 'number') {
-      if (current === val) return;   // no change
-      if (current !== null) return;  // already claimed locally
-      state.board[idx].owner = val;
-    } else {
-      return;
-    }
-
+    applyClaim(idx, val);
     state.scores = calcScores();
     renderScoreboard();
     renderBoard();
     checkWin();
+  });
+
+  // If .on above doesn't replay old values in some environments, ensure we fetch existing old values once.
+  claimStream.map().once((val, key) => {
+    const idx = parseInt(key);
+    if (isNaN(idx)) return;
+    applyClaim(idx, val);
+    state.scores = calcScores();
+    renderScoreboard();
+    renderBoard();
   });
 
   // Board-reset updates
@@ -551,13 +565,18 @@ function subscribeRoom(roomId) {
     if (!cfg || !cfg.challenges || !cfg.resetTime) return;
     if (cfg.resetTime === lastResetTime) return;
     lastResetTime = cfg.resetTime;
-    state.board   = JSON.parse(cfg.challenges).map(ch => ({ challenge: ch, owner: null }));
+    state.size   = cfg.size || state.size;
+    state.numPlayers = cfg.numPlayers || state.numPlayers;
+    state.players    = cfg.players ? JSON.parse(cfg.players) : state.players;
+    state.board      = JSON.parse(cfg.challenges).map(ch => ({ challenge: ch, owner: null }));
     state.scores  = Array(state.numPlayers).fill(0);
     state.activePlayer = 0;
+
     renderScoreboard();
     renderBoard();
   });
 }
+
 
 async function loadRoom(roomId) {
   const ref = roomRef(roomId);
